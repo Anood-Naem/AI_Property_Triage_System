@@ -1,0 +1,374 @@
+/* styles.css */
+
+/* =========================
+   APP BACKGROUND
+========================= */
+.stApp {
+    background:
+        {{OVERLAY}},
+        url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1920&auto=format&fit=crop");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: {{TEXT}};
+}
+
+/* Keep Streamlit native header visible: Deploy + Settings + Theme */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}
+
+div[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+div[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+/* =========================
+   MAIN PAGE
+========================= */
+.main-title {
+    font-size: 52px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+    color: {{TEXT}};
+}
+
+.sub-title {
+    text-align: center;
+    color: {{SUBTEXT}} !important;
+    margin-bottom: 50px;
+    font-size: 18px;
+}
+
+.section-title {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: {{TEXT}};
+}
+
+.small-text {
+    color: {{SUBTEXT}} !important;
+    margin-bottom: 24px;
+}
+
+/* =========================
+   FORMS + GLOBAL BUTTONS
+========================= */
+label,
+.stTextInput label,
+.stTextArea label,
+.stSelectbox label,
+.stFileUploader label {
+    color: {{TEXT}} !important;
+    font-weight: 600 !important;
+}
+
+textarea,
+input,
+.stSelectbox div[data-baseweb="select"] > div {
+    background-color: {{INPUT_BG}} !important;
+    color: {{TEXT}} !important;
+    border: 1px solid {{BORDER}} !important;
+    border-radius: 14px !important;
+}
+
+textarea {
+    line-height: 1.7 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: {{SUBTEXT}} !important;
+    opacity: 1 !important;
+}
+
+.stSelectbox * {
+    color: {{TEXT}} !important;
+}
+
+.stButton > button {
+    background: #2563eb;
+    color: #ffffff !important;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 22px;
+    font-weight: 600;
+    opacity: 1 !important;
+    transition: 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: #1d4ed8;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
+
+/* Main page uploader */
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploader"],
+.main section[data-testid="stFileUploader"] {
+    background-color: {{INPUT_BG}} !important;
+    border: 1px solid {{BORDER}} !important;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploaderDropzone"] {
+    background-color: {{INPUT_BG}} !important;
+    color: {{TEXT}} !important;
+}
+
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploaderDropzone"] button {
+    background: {{INPUT_BG}} !important;
+    color: {{TEXT}} !important;
+    border: 1px solid {{BORDER}} !important;
+}
+
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploaderDropzone"] button *,
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploaderDropzone"] small,
+section:not([data-testid="stSidebar"]) [data-testid="stFileUploaderDropzone"] p {
+    color: {{SUBTEXT}} !important;
+    opacity: 1 !important;
+}
+
+/* =========================
+   SIDEBAR ASSISTANT
+========================= */
+section[data-testid="stSidebar"] {
+    background-color: {{SIDEBAR}};
+    width: 395px !important;
+    min-width: 395px !important;
+    max-width: 395px !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    width: 395px !important;
+    padding: 8px 14px !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: {{TEXT}};
+}
+
+section[data-testid="stSidebar"] .element-container {
+    margin-bottom: 0.35rem !important;
+}
+
+.assistant-card {
+    background: {{INPUT_BG}};
+    border: 1px solid {{BORDER}};
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin: 4px 0 8px;
+}
+
+.assistant-card h2 {
+    font-size: 21px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    color: {{TEXT}} !important;
+}
+
+.assistant-card p {
+    font-size: 12px;
+    color: {{SUBTEXT}} !important;
+    margin: 0;
+}
+
+.sidebar-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: {{TEXT}} !important;
+    margin: 8px 0 4px 4px;
+}
+
+.empty-chat {
+    background: {{INPUT_BG}};
+    color: {{SUBTEXT}} !important;
+    border: 1px dashed rgba(148, 163, 184, 0.55);
+    border-radius: 13px;
+    padding: 9px;
+    font-size: 13px;
+}
+
+/* Sidebar buttons outside chat form */
+section[data-testid="stSidebar"] .stButton > button {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    border-radius: 12px !important;
+    border: 1px solid {{BORDER}} !important;
+    background: {{INPUT_BG}} !important;
+    color: {{TEXT}} !important;
+    box-shadow: none !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding: 7px 11px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(37, 99, 235, 0.18) !important;
+    border-color: rgba(37, 99, 235, 0.45) !important;
+    transform: none !important;
+}
+
+/* Chat bubbles */
+.user-bubble,
+.assistant-bubble {
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.user-bubble {
+    background: #2563eb;
+    color: #ffffff !important;
+    border-radius: 16px 16px 4px 16px;
+    margin: 8px 0 8px 62px;
+}
+
+.assistant-bubble {
+    background: {{INPUT_BG}};
+    color: {{TEXT}} !important;
+    border: 1px solid {{BORDER}};
+    border-radius: 16px 16px 16px 4px;
+    margin: 8px 62px 8px 0;
+}
+
+/* Sidebar chat input */
+section[data-testid="stSidebar"] div[data-testid="stForm"] {
+    background: {{INPUT_BG}};
+    border: 1px solid {{BORDER}};
+    border-radius: 16px;
+    padding: 9px 9px 8px;
+    margin-top: 6px;
+    overflow: visible !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stTextArea {
+    margin-bottom: 8px !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stTextArea small,
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stTextArea [data-testid="InputInstructions"] {
+    display: none !important;
+}
+
+section[data-testid="stSidebar"] textarea {
+    min-height: 54px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+    background: {{INPUT_BG}} !important;
+    color: {{TEXT}} !important;
+}
+
+/* Keep Upload and Send columns aligned */
+section[data-testid="stSidebar"] div[data-testid="stForm"] div[data-testid="column"] {
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+}
+
+/* Sidebar uploader container */
+section[data-testid="stSidebar"] [data-testid="stFileUploader"],
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] section {
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    background: transparent !important;
+}
+
+/* Three dots column */
+section[data-testid="stSidebar"] div[data-testid="column"]:nth-child(2) .stButton > button {
+    justify-content: center !important;
+    text-align: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* =========================
+   ALERTS
+========================= */
+.success-box,
+.error-box {
+    padding: 16px;
+    border-radius: 14px;
+}
+
+.success-box {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #10b981;
+}
+
+.error-box {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+}
+
+/* =========================
+   FINAL FIX: SEND LIKE UPLOAD
+========================= */
+
+/* Upload + Send same style inside sidebar form */
+section[data-testid="stSidebar"] div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button,
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stFormSubmitButton button,
+section[data-testid="stSidebar"] div[data-testid="stForm"] [data-testid="stFileUploaderDropzone"] button {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border: 1px solid #2563eb !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    width: 100% !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    box-shadow: none !important;
+    padding: 0 14px !important;
+    opacity: 1 !important;
+}
+
+/* Text inside Upload + Send */
+section[data-testid="stSidebar"] div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button *,
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stFormSubmitButton button *,
+section[data-testid="stSidebar"] div[data-testid="stForm"] [data-testid="stFileUploaderDropzone"] button * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Hover */
+section[data-testid="stSidebar"] div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button:hover,
+section[data-testid="stSidebar"] div[data-testid="stForm"] .stFormSubmitButton button:hover,
+section[data-testid="stSidebar"] div[data-testid="stForm"] [data-testid="stFileUploaderDropzone"] button:hover {
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+}
