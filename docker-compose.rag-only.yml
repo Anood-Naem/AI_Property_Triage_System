@@ -1,0 +1,26 @@
+# Minimal compose for partner repo — RAG service only (first integration PR)
+# Usage: docker compose -f docker-compose.rag-only.yml up --build -d
+
+services:
+  rag_service:
+    build:
+      context: ./services
+      dockerfile: rag_service/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      CHROMA_DIR: /data/chroma
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      GGUF_MODEL_PATH: ${GGUF_MODEL_PATH:-}
+      TOP_K: ${TOP_K:-3}
+    volumes:
+      - rag_chroma_data:/data/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 20s
+      timeout: 15s
+      retries: 8
+      start_period: 180s
+
+volumes:
+  rag_chroma_data:
