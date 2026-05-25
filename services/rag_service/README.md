@@ -19,7 +19,7 @@ FastAPI service for similar listing retrieval using ChromaDB and HuggingFace sen
 ## Populate ChromaDB
 
 ```bash
-cd code/rag_service
+cd services/rag_service
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
