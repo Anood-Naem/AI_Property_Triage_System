@@ -1,0 +1,44 @@
+# RAG + Guardrails — for partner repo integration testing
+# Usage: docker compose -f docker-compose.backend.yml up --build -d
+
+services:
+  rag_service:
+    build:
+      context: ./services
+      dockerfile: rag_service/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      CHROMA_DIR: /data/chroma
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      GGUF_MODEL_PATH: ${GGUF_MODEL_PATH:-/models/qwen2.5-1.5b-instruct-q4_k_m.gguf}
+      TOP_K: ${TOP_K:-3}
+    volumes:
+      - rag_chroma_data:/data/chroma
+      - ./models:/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 20s
+      timeout: 15s
+      retries: 8
+      start_period: 180s
+    restart: unless-stopped
+
+  guardrails_service:
+    build:
+      context: ./services
+      dockerfile: guardrails_service/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      USE_NEMO_GUARDRAILS: ${USE_NEMO_GUARDRAILS:-false}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  rag_chroma_data:
