@@ -31,3 +31,4 @@ webui/chat_uploads/
 Thumbs.db
 models/
 *.gguf
+services/rag_service/chroma_data/

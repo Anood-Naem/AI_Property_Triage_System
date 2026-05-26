@@ -15,6 +15,8 @@ from config import (
 )
 from database import ensure_conversation, add_message, get_messages
 from prompt import SYSTEM_PROMPT
+from sonar_service import stream_sonar_response
+from model_router import choose_assistant_route
 
 
 def save_images(files):
@@ -143,7 +145,21 @@ def ask_assistant(user_text, uploaded_images):
         response_placeholder = st.empty()
         full_response = ""
 
-        for token in stream_groq_response(conversation_id):
+        route = choose_assistant_route(
+            user_text=user_text,
+            has_images=bool(image_paths),
+        )
+
+        # Optional: keep this only while testing.
+        # After testing, you can delete this line.
+        st.info(f"Routing to: {route.upper()}")
+
+        if route == "sonar":
+            token_stream = stream_sonar_response(conversation_id)
+        else:
+            token_stream = stream_groq_response(conversation_id)
+
+        for token in token_stream:
             full_response += token
             response_placeholder.markdown(
                 f'<div class="assistant-bubble">{full_response}</div>',
