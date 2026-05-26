@@ -29,3 +29,5 @@ webui/chat_uploads/
 # OS files
 .DS_Store
 Thumbs.db
+models/
+*.gguf
