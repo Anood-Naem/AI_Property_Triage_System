@@ -39,6 +39,27 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+   
+  image_analyser_service:
+    build:
+      context: ./services
+      dockerfile: image_analyser_service/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      MODEL_CHECKPOINT_PATH: ${MODEL_CHECKPOINT_PATH:-/app/checkpoints/property_room_model.pt}
+      MOCK_INFERENCE: ${MOCK_INFERENCE:-true}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.5}
+    volumes:
+      - image_checkpoints:/app/checkpoints
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 20s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
 
 volumes:
   rag_chroma_data:
+  image_checkpoints:
