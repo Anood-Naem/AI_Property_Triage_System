@@ -1,18 +1,39 @@
+from pathlib import Path
+import html as html_lib
+import re
+import textwrap
+
 import requests
 import streamlit as st
 
 from config import N8N_WEBHOOK_URL
 
 
+def load_report_styles():
+    css_path = Path(__file__).parent / "report_styles.css"
+
+    if css_path.exists():
+        with open(css_path, "r", encoding="utf-8") as file:
+            st.markdown(f"<style>{file.read()}</style>", unsafe_allow_html=True)
+
+
 def render_main_form():
-    st.markdown('<div class="main-title">AI Property Triage System</div>', unsafe_allow_html=True)
+    load_report_styles()
+
+    st.markdown(
+        '<div class="main-title">AI Property Triage System</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<div class="sub-title">Real estate listing intake, analysis, routing, and reporting</div>',
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="section-title">Submit New Property Listing</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">Submit New Property Listing</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<p class="small-text">Enter the property details below and submit them for analysis.</p>',
@@ -26,7 +47,10 @@ def render_main_form():
 
     description = st.text_area(
         "Property Description",
-        placeholder="Example: 3-room apartment in Haifa, asking price 1,200,000 ILS, renovated kitchen, balcony and parking.",
+        placeholder=(
+            "Example: 3-room apartment in Haifa, asking price 1,200,000 ILS, "
+            "renovated kitchen, balcony and parking."
+        ),
         height=170,
     )
 
@@ -43,28 +67,37 @@ def render_main_form():
         key="main_property_images",
     )
 
-
-
     if st.button("Submit Listing"):
-        submit_listing(
-            agent_name,
-            description,
-            image_urls_text,
-            uploaded_images,
-
+        result = submit_listing(
+            agent_name=agent_name,
+            description=description,
+            image_urls_text=image_urls_text,
+            uploaded_images=uploaded_images,
         )
+
+        if result:
+            st.session_state["last_listing_result"] = result
+
+    if "last_listing_result" in st.session_state:
+        render_n8n_result(st.session_state["last_listing_result"])
 
 
 def submit_listing(agent_name, description, image_urls_text, uploaded_images):
     if not description.strip():
         st.warning("Please enter a property description.")
-        return
+        return None
 
     payload = {
         "agent_name": agent_name,
         "description": description,
-        "image_urls": [url.strip() for url in image_urls_text.split(",") if url.strip()],
-        "uploaded_image_names": [image.name for image in uploaded_images] if uploaded_images else [],
+        "image_urls": [
+            url.strip()
+            for url in image_urls_text.split(",")
+            if url.strip()
+        ],
+        "uploaded_image_names": [
+            image.name for image in uploaded_images
+        ] if uploaded_images else [],
     }
 
     try:
@@ -72,50 +105,329 @@ def submit_listing(agent_name, description, image_urls_text, uploaded_images):
             response = requests.post(
                 N8N_WEBHOOK_URL,
                 json=payload,
-                timeout=120,
+                timeout=180,
             )
 
         try:
             result = response.json()
         except Exception:
             result = {
-                "success": False,
                 "status": "error",
                 "message": response.text,
             }
 
-        is_rejected = (
-            result.get("success") is False
-            or result.get("status") == "rejected"
-            or response.status_code != 200
+        result["_http_status_code"] = response.status_code
+        return result
+
+    except requests.exceptions.ConnectionError:
+        return {
+            "status": "error",
+            "message": "Could not connect to the n8n workflow. Make sure n8n is running.",
+        }
+
+    except requests.exceptions.Timeout:
+        return {
+            "status": "error",
+            "message": "The n8n workflow took too long to respond.",
+        }
+
+    except Exception as error:
+        return {
+            "status": "error",
+            "message": f"Error: {error}",
+        }
+
+
+def get_user_friendly_rejection_message(reason):
+    reason_lower = (reason or "").lower()
+
+    if "prompt injection" in reason_lower:
+        return (
+            "This submission cannot be processed. "
+            "Please enter only valid real estate listing details."
         )
 
-        if is_rejected:
-            st.markdown(
-                '<div class="error-box">Listing was rejected or failed.</div>',
-                unsafe_allow_html=True,
-            )
+    if "off-topic" in reason_lower or "not a property listing" in reason_lower:
+        return (
+            "This submission does not appear to be a valid real estate listing. "
+            "Please provide property details such as type, location, price, rooms, and key features."
+        )
 
-            reason = result.get("reason") or result.get("message") or "No reason provided."
-            st.error(reason)
+    if "spam" in reason_lower or "promotional" in reason_lower:
+        return (
+            "This submission appears to contain spam or promotional content. "
+            "Please submit a genuine property listing."
+        )
 
-            st.subheader("AI Report")
-            st.json(result)
-            return
+    if "offensive" in reason_lower:
+        return (
+            "This submission contains inappropriate content and cannot be processed. "
+            "Please revise the listing and try again."
+        )
 
+    if "too short" in reason_lower:
+        return (
+            "The property description is too short. "
+            "Please provide more details about the listing."
+        )
+
+    return (
+        "This submission could not be processed. "
+        "Please make sure it contains a valid real estate listing."
+    )
+
+
+def render_n8n_result(result):
+    status = result.get("status")
+    http_status = result.get("_http_status_code", 200)
+
+    if http_status != 200 or status == "error":
+        st.markdown(
+            '<div class="error-box">Listing was rejected or failed.</div>',
+            unsafe_allow_html=True,
+        )
+        st.error(result.get("message", "Unknown error."))
+        return
+
+    if status == "success":
         st.markdown(
             '<div class="success-box">Listing processed successfully.</div>',
             unsafe_allow_html=True,
         )
 
-        st.subheader("AI Report")
-        st.json(result)
+        report = result.get("report")
 
-    except requests.exceptions.ConnectionError:
-        st.error("Could not connect to the analysis service.")
+        if report:
+            render_report_card(result)
+        else:
+            st.warning("n8n returned success, but no report field was found.")
+            st.json(result)
 
-    except requests.exceptions.Timeout:
-        st.error("The analysis service took too long to respond.")
+        return
 
-    except Exception as error:
-        st.error(f"Error: {error}")
+    if status == "rejected":
+        st.markdown(
+            '<div class="error-box">Submission could not be processed.</div>',
+            unsafe_allow_html=True,
+        )
+
+        technical_reason = result.get("reason", "")
+        friendly_message = get_user_friendly_rejection_message(technical_reason)
+
+        st.error(friendly_message)
+        return
+
+    if status == "blocked":
+        st.markdown(
+            '<div class="error-box">Generated report requires human review.</div>',
+            unsafe_allow_html=True,
+        )
+
+        st.warning(
+            result.get(
+                "reason",
+                result.get("message", "The report requires human review."),
+            )
+        )
+
+        report = result.get("report")
+        if report:
+            render_report_card(result)
+
+        return
+
+    st.warning("Received an unknown response from n8n.")
+    st.json(result)
+
+
+def get_report_value(report, label):
+    patterns = [
+        rf"\*\*{re.escape(label)}:\*\*\s*(.+)",
+        rf"{re.escape(label)}:\s*(.+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, report, re.IGNORECASE)
+        if match:
+            value = match.group(1).strip()
+            return value if value else "—"
+
+    return "—"
+
+
+def get_report_header(report):
+    for line in report.splitlines():
+        clean_line = line.strip()
+
+        if clean_line.startswith("🏠"):
+            return clean_line.replace("🏠", "").strip()
+
+    return "Property Report"
+
+
+def normalize_report_header(header, property_type, team):
+    if header and header != "Property Report":
+        parts = [part.strip().title() for part in header.split("·")]
+        return " · ".join(parts)
+
+    return f"{property_type.title()} · {team.title()}"
+
+
+def extract_report_section(report, title):
+    pattern = rf"##\s*{re.escape(title)}:?\s*(.*?)(?=\n##\s|\Z)"
+    match = re.search(pattern, report, re.DOTALL | re.IGNORECASE)
+
+    if not match:
+        return ""
+
+    return match.group(1).strip()
+
+
+def is_meaningful_section(content):
+    if not content:
+        return False
+
+    cleaned = str(content).strip().lower()
+
+    empty_values = [
+        "—",
+        "-",
+        "- —",
+        "- —: —",
+        "—: —",
+        "no image analysis was provided.",
+    ]
+
+    if cleaned in empty_values:
+        return False
+
+    cleaned_without_symbols = re.sub(
+        r"[\s\-\•\*:—_/().,%0-9]",
+        "",
+        cleaned,
+    )
+
+    return bool(cleaned_without_symbols)
+
+
+def format_inline_markdown(text):
+    escaped = html_lib.escape(str(text))
+    escaped = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", escaped)
+    return escaped
+
+
+def markdown_list_to_html(content):
+    if not is_meaningful_section(content):
+        return ""
+
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    html_parts = []
+    list_items = []
+
+    def flush_list():
+        nonlocal list_items
+
+        if list_items:
+            html_parts.append("<ul>" + "".join(list_items) + "</ul>")
+            list_items = []
+
+    for line in lines:
+        is_bullet = line.startswith(("-", "*", "•"))
+
+        if is_bullet:
+            item = re.sub(r"^[-*•]\s*", "", line).strip()
+
+            if is_meaningful_section(item):
+                list_items.append(f"<li>{format_inline_markdown(item)}</li>")
+        else:
+            flush_list()
+            html_parts.append(f"<p>{format_inline_markdown(line)}</p>")
+
+    flush_list()
+    return "".join(html_parts)
+
+
+def build_report_section(title, content):
+    section_html = markdown_list_to_html(content)
+
+    if not section_html:
+        return ""
+
+    return (
+        '<section class="report-section-card">'
+        f'<h3>{html_lib.escape(title)}</h3>'
+        f'<div class="report-section-content">{section_html}</div>'
+        '</section>'
+    )
+
+
+def render_report_card(result):
+    report = result.get("report", "")
+    team = str(result.get("team", "—")).title()
+    property_type = str(result.get("property_type", "—")).title()
+
+    report_header = normalize_report_header(
+        get_report_header(report),
+        property_type,
+        team,
+    )
+
+    location = get_report_value(report, "Location")
+    price = get_report_value(report, "Price")
+    rooms = get_report_value(report, "Rooms")
+    confidence = get_report_value(report, "Report confidence")
+
+    key_features = extract_report_section(report, "Key features")
+    image_analysis = extract_report_section(report, "Image analysis")
+    similar_listings = extract_report_section(report, "Similar past listings")
+    market_insight = extract_report_section(report, "Market insight")
+    analyst_notes = extract_report_section(report, "Analyst notes")
+
+    sections_html = "".join(
+        [
+            build_report_section("Key features", key_features),
+            build_report_section("Image analysis", image_analysis),
+            build_report_section("Similar past listings", similar_listings),
+            build_report_section("Market insight", market_insight),
+            build_report_section("Analyst notes", analyst_notes),
+        ]
+    )
+
+    report_html = (
+        '<div class="report-wrapper">'
+        '<div class="report-main-card">'
+        '<div class="report-header-row">'
+        '<div>'
+        '<div class="report-status-pill">✅ Report received</div>'
+        f'<h2>🏠 {html_lib.escape(report_header)}</h2>'
+        '</div>'
+        f'<div class="report-team-badge">{html_lib.escape(team)}</div>'
+        '</div>'
+        '<div class="report-kpi-grid">'
+        '<div class="report-kpi">'
+        '<span>Location</span>'
+        f'<strong>{html_lib.escape(location)}</strong>'
+        '</div>'
+        '<div class="report-kpi">'
+        '<span>Price</span>'
+        f'<strong>{html_lib.escape(price)}</strong>'
+        '</div>'
+        '<div class="report-kpi">'
+        '<span>Rooms</span>'
+        f'<strong>{html_lib.escape(rooms)}</strong>'
+        '</div>'
+        '<div class="report-kpi">'
+        '<span>Confidence</span>'
+        f'<strong>{html_lib.escape(confidence)}</strong>'
+        '</div>'
+        '</div>'
+        '<div class="report-meta">'
+        f'Team: {html_lib.escape(team)} | Property Type: {html_lib.escape(property_type)}'
+        '</div>'
+        '</div>'
+        f'{sections_html}'
+        '</div>'
+    )
+
+    st.markdown("## AI Report")
+    st.markdown(report_html, unsafe_allow_html=True)

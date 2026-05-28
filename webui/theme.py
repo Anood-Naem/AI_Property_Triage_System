@@ -9,46 +9,23 @@ except ImportError:
 
 
 def get_theme_base():
+    """
+    Detect active Streamlit theme from the native menu.
+    Important:
+    Do not use st.get_option("theme.base"), because it can return the default
+    configured theme and ignore the user's current Light/Dark menu choice.
+    """
+
     if st_theme is not None:
         theme = st_theme(key="active_streamlit_theme")
 
         if isinstance(theme, dict):
-            base = str(
-                theme.get("base")
-                or theme.get("type")
-                or theme.get("theme")
-                or ""
-            ).lower()
+            base = str(theme.get("base") or "").lower()
 
             if base in ("dark", "light"):
                 return base
 
-    try:
-        context_theme = getattr(st.context, "theme", None)
-
-        if isinstance(context_theme, dict):
-            base = str(context_theme.get("type") or context_theme.get("base") or "").lower()
-        else:
-            base = str(
-                getattr(context_theme, "type", "")
-                or getattr(context_theme, "base", "")
-            ).lower()
-
-        if base in ("dark", "light"):
-            return base
-
-    except Exception:
-        pass
-
-    try:
-        configured_theme = str(st.get_option("theme.base") or "").lower()
-
-        if configured_theme in ("dark", "light"):
-            return configured_theme
-
-    except Exception:
-        pass
-
+    # Safe default while Streamlit theme component is loading
     return "light"
 
 
@@ -57,14 +34,18 @@ def apply_theme():
 
     tokens = {
         "{{TEXT}}": "#f8fafc" if dark else "#0f172a",
-        "{{SUBTEXT}}": "#cbd5e1" if dark else "#64748b",
-        "{{SIDEBAR}}": "#071224" if dark else "#eef2f7",
-        "{{INPUT_BG}}": "#0b1730" if dark else "#ffffff",
-        "{{BORDER}}": "rgba(148, 163, 184, 0.35)",
+        "{{SUBTEXT}}": "#cbd5e1" if dark else "#334155",
+
+        # DARK stays exactly close to your good design
+        "{{SIDEBAR}}": "#071224" if dark else "rgba(248, 250, 252, 0.96)",
+        "{{INPUT_BG}}": "#0b1730" if dark else "rgba(255, 255, 255, 0.96)",
+        "{{BORDER}}": "rgba(148, 163, 184, 0.35)" if dark else "rgba(15, 23, 42, 0.18)",
+
+        # DARK unchanged, LIGHT becomes real light while keeping background image visible
         "{{OVERLAY}}": (
             "linear-gradient(rgba(2,6,23,0.88), rgba(2,6,23,0.92))"
             if dark
-            else "linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.82))"
+            else "linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.84))"
         ),
     }
 
