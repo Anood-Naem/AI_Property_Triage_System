@@ -60,7 +60,7 @@ async def check_input(request: CheckRequest) -> dict:
     if not engine:
         raise HTTPException(status_code=503, detail="Guardrails engine not ready")
     result = engine.check_input(request.text)
-    return {"pass": result["pass"], "reason": result["reason"], "safe_text": result["safe_text"]}
+    return {"pass_": result["pass"], "reason": result["reason"], "safe_text": result["safe_text"]}
 
 
 @app.post("/check/output", response_model=CheckResponse)
@@ -68,7 +68,7 @@ async def check_output(request: CheckRequest) -> dict:
     if not engine:
         raise HTTPException(status_code=503, detail="Guardrails engine not ready")
     result = engine.check_output(request.text)
-    return {"pass": result["pass"], "reason": result["reason"], "safe_text": result["safe_text"]}
+    return {"pass_": result["pass"], "reason": result["reason"], "safe_text": result["safe_text"]}
 
 
 if __name__ == "__main__":
