@@ -60,6 +60,29 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  langgraph_agent_service:
+    build:
+      context: ./services
+      dockerfile: langgraph_agent_service/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      RAG_SERVICE_URL: http://rag_service:8001
+      IMAGE_ANALYSER_URL: http://image_analyser_service:8002
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30}
+      HTTP_RETRIES: ${HTTP_RETRIES:-2}
+    depends_on:
+      rag_service:
+        condition: service_started
+      image_analyser_service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 volumes:
   rag_chroma_data:
   image_checkpoints:
