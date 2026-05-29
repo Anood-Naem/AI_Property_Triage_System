@@ -49,7 +49,7 @@ services:
       - "8002:8002"
     environment:
       MODEL_CHECKPOINT_PATH: ${MODEL_CHECKPOINT_PATH:-/app/checkpoints/property_room_model.pt}
-      MOCK_INFERENCE: ${MOCK_INFERENCE:-true}
+      MOCK_INFERENCE: ${MOCK_INFERENCE:-false}
       CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.5}
     volumes:
       - ./services/image_analyser_service/checkpoints:/app/checkpoints:ro

@@ -26,4 +26,4 @@ pip install -r requirements.txt
 python train.py --data-dir ../../dataset_extracted --split train --epochs 5 --batch-size 32 --max-samples 4000 --output ./checkpoints/property_room_model.pt
 ```
 
-Weights are published as **ZIP on GitHub Releases** (`.pt` files are too large for git).
+Weights are published as **ZIP on GitHub Releases** (`.pt` files are too large for git). Layer 4 overview: `services/README.md`.

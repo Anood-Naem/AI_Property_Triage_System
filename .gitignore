@@ -29,8 +29,8 @@ webui/chat_uploads/
 # OS files
 .DS_Store
 Thumbs.db
-models/
-*.gguf
+models/*.gguf
+models/*.bin
 *.pt
 *.pth
 checkpoints/*.pt
