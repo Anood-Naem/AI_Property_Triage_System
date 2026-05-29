@@ -29,6 +29,12 @@ webui/chat_uploads/
 # OS files
 .DS_Store
 Thumbs.db
-models/
-*.gguf
+models/*.gguf
+models/*.bin
+*.pt
+*.pth
+checkpoints/*.pt
+release_assets/
+dataset_extracted/
+dataset.zip
 services/rag_service/chroma_data/

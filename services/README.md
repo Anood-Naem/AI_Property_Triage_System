@@ -38,11 +38,29 @@ Replace hostnames with `http://localhost:8001` etc.
 
 See root `.env.example`. Never commit `.env` or model weights.
 
-## Layer 4 (models)
+## Layer 4 (models & data)
 
-- **RAG:** ChromaDB + `sentence-transformers/all-MiniLM-L6-v2`; optional GGUF via `GGUF_MODEL_PATH`
-- **Images:** PyTorch ResNet-50; `MOCK_INFERENCE=true` for demo without checkpoint
-- **Guardrails:** Rule engine; optional NeMo via `USE_NEMO_GUARDRAILS=true`
-- **Agent:** LangGraph; calls RAG + Image over HTTP
+Intelligence lives **inside** layer 3 services (not a separate app). Weights are **not** in git.
 
-Each subfolder has its own `README.md` with curl examples.
+| Component | Technology | Setup |
+|-----------|------------|--------|
+| **RAG** | ChromaDB + `sentence-transformers/all-MiniLM-L6-v2` | Run `populate_chroma.py` once (see `rag_service/README.md`) |
+| **RAG insight** | Optional GGUF in `models/` | See `models/README.md` |
+| **Images** | ResNet-50 checkpoint | [Release `image-model-v1`](https://github.com/Anood-Naem/AI_Property_Triage_System/releases/tag/image-model-v1) → `image_analyser_service/checkpoints/property_room_model.pt` |
+| **Guardrails** | Rule engine | Default; optional NeMo: `USE_NEMO_GUARDRAILS=true` |
+| **Agent** | LangGraph | No local weights; calls RAG + Image over HTTP |
+| **WebUI chat** | Ollama (host) | `OLLAMA_BASE_URL` in `.env.example` |
+| **n8n LLMs** | OpenAI/Gemini | Keys in n8n UI only |
+
+### One-time before demo
+
+```powershell
+copy .env.example .env
+# Image weights: download property_room_model.zip from Release image-model-v1, unzip to checkpoints/
+docker compose -f docker-compose.backend.yml up -d
+docker compose -f docker-compose.backend.yml exec rag_service python populate_chroma.py
+```
+
+Copy `.env.example` → `.env`, set `MOCK_INFERENCE=false` after adding the image checkpoint.
+
+Each service folder has a `README.md` with API examples.

@@ -33,9 +33,24 @@ def train_epoch(model, loader, optimizer, criterion, device) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", default="./data", help="Training image root")
+    parser.add_argument(
+        "--data-dir",
+        default="./data",
+        help="Dataset root (nested layout) or parent of train/ (Drive zip layout)",
+    )
+    parser.add_argument(
+        "--split",
+        default="train",
+        help="Subfolder for Drive layout: train | test",
+    )
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=0,
+        help="Cap training images (0 = all). Use 4000 for faster CPU runs.",
+    )
     parser.add_argument("--output", default="./checkpoints/property_room_model.pt")
     args = parser.parse_args()
 
@@ -47,7 +62,17 @@ def main() -> None:
     )
     criterion = nn.CrossEntropyLoss()
 
-    dataset = PropertyImageDataset(args.data_dir)
+    dataset = PropertyImageDataset(args.data_dir, split=args.split)
+    if args.max_samples and len(dataset) > args.max_samples:
+        import random
+
+        from torch.utils.data import Subset
+
+        random.seed(42)
+        indices = random.sample(range(len(dataset)), args.max_samples)
+        dataset = Subset(dataset, indices)
+        logger.info("Using %d / full dataset samples", args.max_samples)
+
     if len(dataset) == 0:
         logger.warning("No images in %s — running synthetic demo training", args.data_dir)
 
@@ -65,11 +90,18 @@ def main() -> None:
 
         loader = SyntheticLoader(args.batch_size)
     else:
-        loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+        loader = DataLoader(
+            dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=0,
+            pin_memory=torch.cuda.is_available(),
+        )
 
     for epoch in range(args.epochs):
         loss = train_epoch(model, loader, optimizer, criterion, device)
         logger.info("Epoch %d/%d — loss: %.4f", epoch + 1, args.epochs, loss)
+        print(f"Epoch {epoch + 1}/{args.epochs} — loss: {loss:.4f}", flush=True)
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     torch.save(model.state_dict(), args.output)
