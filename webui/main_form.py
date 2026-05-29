@@ -67,11 +67,17 @@ def render_main_form():
     )
 
     if st.button("Submit Listing"):
+        current_uploaded_images = (
+            uploaded_images
+            or st.session_state.get("main_property_images")
+            or []
+        )
+
         result = submit_listing(
             agent_name=agent_name,
             description=description,
             image_urls_text=image_urls_text,
-            uploaded_images=uploaded_images,
+            uploaded_images=current_uploaded_images,
         )
 
         if result:
@@ -85,18 +91,24 @@ def build_uploaded_images_payload(uploaded_images):
     images_payload = []
 
     for image in uploaded_images or []:
-        image_bytes = image.getvalue()
+        try:
+            image_bytes = image.getvalue()
 
-        images_payload.append(
-            {
-                "filename": image.name,
-                "mime_type": image.type,
-                "base64": base64.b64encode(image_bytes).decode("utf-8"),
-            }
-        )
+            if not image_bytes:
+                continue
+
+            images_payload.append(
+                {
+                    "filename": image.name or "uploaded_image.jpg",
+                    "mime_type": image.type or "image/jpeg",
+                    "base64": base64.b64encode(image_bytes).decode("utf-8"),
+                }
+            )
+
+        except Exception as error:
+            st.warning(f"Could not read uploaded image {getattr(image, 'name', '')}: {error}")
 
     return images_payload
-
 
 def parse_image_urls(image_urls_text):
     return [
@@ -111,12 +123,13 @@ def submit_listing(agent_name, description, image_urls_text, uploaded_images):
         st.warning("Please enter a property description.")
         return None
 
+    image_urls = parse_image_urls(image_urls_text)
     uploaded_images_payload = build_uploaded_images_payload(uploaded_images)
 
     payload = {
         "agent_name": agent_name,
         "description": description,
-        "image_urls": parse_image_urls(image_urls_text),
+        "image_urls": image_urls,
         "uploaded_images": uploaded_images_payload,
         "uploaded_image_names": [
             image["filename"] for image in uploaded_images_payload
@@ -159,7 +172,6 @@ def submit_listing(agent_name, description, image_urls_text, uploaded_images):
             "status": "error",
             "message": f"Error: {error}",
         }
-
 
 def get_user_friendly_rejection_message(reason):
     reason_lower = (reason or "").lower()
@@ -477,5 +489,5 @@ def render_report_card(result):
         '</div>'
     )
 
-    st.markdown("## AI Report")
+    st.markdown("## Report")
     st.markdown(report_html, unsafe_allow_html=True)

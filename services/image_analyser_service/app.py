@@ -46,7 +46,7 @@ class BatchAnalyseRequest(BaseModel):
     images: list[ImageSource] | None = Field(default=None, max_length=20)
 
     @model_validator(mode="after")
-    def validate_batch(self) -> BatchAnalyseRequest:
+    def validate_batch(self) -> "BatchAnalyseRequest" :
         urls = [u.strip() for u in (self.image_urls or []) if u and u.strip()]
         items = list(self.images or [])
         total = len(urls) + len(items)
