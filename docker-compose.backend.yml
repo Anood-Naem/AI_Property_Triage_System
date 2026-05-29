@@ -1,5 +1,6 @@
-# RAG + Guardrails — for partner repo integration testing
+# All backend services (RAG, Image, Guardrails, LangGraph)
 # Usage: docker compose -f docker-compose.backend.yml up --build -d
+# Requires trained weights: see docs/IMAGE_MODEL_TRAINING.md and GitHub Release image-model-v1
 
 services:
   rag_service:
@@ -51,7 +52,7 @@ services:
       MOCK_INFERENCE: ${MOCK_INFERENCE:-true}
       CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.5}
     volumes:
-      - image_checkpoints:/app/checkpoints
+      - ./services/image_analyser_service/checkpoints:/app/checkpoints:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 20s
@@ -85,4 +86,3 @@ services:
     restart: unless-stopped
 volumes:
   rag_chroma_data:
-  image_checkpoints:
