@@ -2,12 +2,14 @@
 
 import logging
 import os
+from io import BytesIO
 from typing import Any
 from urllib.parse import urlparse
 
 import torch
 from PIL import Image
 
+from image_sources import ImageSource
 from model import ROOM_CLASSES, PropertyRoomModel
 
 logger = logging.getLogger(__name__)
@@ -58,10 +60,10 @@ class ImageInferenceEngine:
             logger.warning("Model load failed: %s — using mock", exc)
             self.model = None
 
-    def _mock_from_url(self, image_url: str) -> dict[str, Any]:
-        path = urlparse(image_url).path.lower()
+    def _mock_from_hints(self, hint: str) -> dict[str, Any]:
+        path = urlparse(hint).path.lower() if "://" in hint else hint.lower()
         name = os.path.basename(path)
-        full = image_url.lower()
+        full = hint.lower()
 
         room = "other"
         if "kitchen" in name or "kitchen" in full:
@@ -111,8 +113,6 @@ class ImageInferenceEngine:
 
             resp = httpx.get(image_url, timeout=15.0, follow_redirects=True)
             resp.raise_for_status()
-            from io import BytesIO
-
             content_type = resp.headers.get("content-type", "")
             if content_type and not content_type.startswith("image/"):
                 logger.warning("Non-image content-type for %s: %s", image_url, content_type)
@@ -121,14 +121,30 @@ class ImageInferenceEngine:
             logger.warning("Could not download image %s: %s", image_url, exc)
             return None
 
-    @torch.inference_mode()
-    def analyse(self, image_url: str) -> dict[str, Any]:
-        if not self.model:
-            return self._mock_from_url(image_url)
+    def _load_image_from_bytes(self, raw: bytes, mime_type: str) -> Image.Image | None:
+        try:
+            if not mime_type.startswith("image/"):
+                logger.warning("Unexpected mime type for upload: %s", mime_type)
+            return Image.open(BytesIO(raw)).convert("RGB")
+        except Exception as exc:
+            logger.warning("Could not decode uploaded image (%s): %s", mime_type, exc)
+            return None
 
-        image = self._load_image_from_url(image_url)
+    def _load_pil_image(self, source: ImageSource) -> Image.Image | None:
+        if source.image_url:
+            return self._load_image_from_url(source.image_url)
+        raw, mime = source.decode_bytes()
+        return self._load_image_from_bytes(raw, mime)
+
+    @torch.inference_mode()
+    def analyse(self, source: ImageSource) -> dict[str, Any]:
+        label = source.display_label()
+        if not self.model:
+            return self._mock_from_hints(label)
+
+        image = self._load_pil_image(source)
         if image is None:
-            return self._mock_from_url(image_url)
+            return self._mock_from_hints(label)
 
         assert self.transform is not None
         tensor = self.transform(image).unsqueeze(0).to(self.device)
@@ -141,3 +157,7 @@ class ImageInferenceEngine:
         room_type = ROOM_CLASSES[int(room_idx)]
         condition_score = int(cond_idx) + 1
         return self._format_result(room_type, condition_score, confidence)
+
+    def analyse_url(self, image_url: str) -> dict[str, Any]:
+        """Backward-compatible helper."""
+        return self.analyse(ImageSource(image_url=image_url))
