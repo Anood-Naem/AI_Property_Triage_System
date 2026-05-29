@@ -1,8 +1,7 @@
 from pathlib import Path
 import html as html_lib
 import re
-import textwrap
-
+import base64
 import requests
 import streamlit as st
 
@@ -56,7 +55,7 @@ def render_main_form():
 
     image_urls_text = st.text_area(
         "Image URLs",
-        placeholder="Enter image URLs separated by commas",
+        placeholder="Enter image URLs separated by commas or new lines",
         height=80,
     )
 
@@ -82,22 +81,46 @@ def render_main_form():
         render_n8n_result(st.session_state["last_listing_result"])
 
 
+def build_uploaded_images_payload(uploaded_images):
+    images_payload = []
+
+    for image in uploaded_images or []:
+        image_bytes = image.getvalue()
+
+        images_payload.append(
+            {
+                "filename": image.name,
+                "mime_type": image.type,
+                "base64": base64.b64encode(image_bytes).decode("utf-8"),
+            }
+        )
+
+    return images_payload
+
+
+def parse_image_urls(image_urls_text):
+    return [
+        url.strip()
+        for url in re.split(r"[\n,]+", image_urls_text or "")
+        if url.strip()
+    ]
+
+
 def submit_listing(agent_name, description, image_urls_text, uploaded_images):
     if not description.strip():
         st.warning("Please enter a property description.")
         return None
 
+    uploaded_images_payload = build_uploaded_images_payload(uploaded_images)
+
     payload = {
         "agent_name": agent_name,
         "description": description,
-        "image_urls": [
-            url.strip()
-            for url in image_urls_text.split(",")
-            if url.strip()
-        ],
+        "image_urls": parse_image_urls(image_urls_text),
+        "uploaded_images": uploaded_images_payload,
         "uploaded_image_names": [
-            image.name for image in uploaded_images
-        ] if uploaded_images else [],
+            image["filename"] for image in uploaded_images_payload
+        ],
     }
 
     try:
@@ -296,9 +319,17 @@ def is_meaningful_section(content):
         "- —: —",
         "—: —",
         "no image analysis was provided.",
+        "-: —",
+        "-: — (—/5), confidence —",
+        "-: (—/5), confidence —",
     ]
 
     if cleaned in empty_values:
+        return False
+
+    cleaned_letters = re.sub(r"[^a-zA-Zא-ת]+", "", cleaned)
+
+    if cleaned_letters in ("", "confidence"):
         return False
 
     cleaned_without_symbols = re.sub(
@@ -354,7 +385,7 @@ def build_report_section(title, content):
         return ""
 
     return (
-        '<section class="report-section-card">'
+        '<section class="report-inner-section">'
         f'<h3>{html_lib.escape(title)}</h3>'
         f'<div class="report-section-content">{section_html}</div>'
         '</section>'
@@ -393,9 +424,19 @@ def render_report_card(result):
         ]
     )
 
+    sections_container_html = ""
+
+    if sections_html:
+        sections_container_html = (
+            '<div class="report-divider"></div>'
+            '<div class="report-sections">'
+            f'{sections_html}'
+            '</div>'
+        )
+
     report_html = (
         '<div class="report-wrapper">'
-        '<div class="report-main-card">'
+        '<div class="report-main-card unified-report-card">'
         '<div class="report-header-row">'
         '<div>'
         '<div class="report-status-pill">✅ Report received</div>'
@@ -403,29 +444,36 @@ def render_report_card(result):
         '</div>'
         f'<div class="report-team-badge">{html_lib.escape(team)}</div>'
         '</div>'
+
         '<div class="report-kpi-grid">'
         '<div class="report-kpi">'
         '<span>Location</span>'
         f'<strong>{html_lib.escape(location)}</strong>'
         '</div>'
+
         '<div class="report-kpi">'
         '<span>Price</span>'
         f'<strong>{html_lib.escape(price)}</strong>'
         '</div>'
+
         '<div class="report-kpi">'
         '<span>Rooms</span>'
         f'<strong>{html_lib.escape(rooms)}</strong>'
         '</div>'
+
         '<div class="report-kpi">'
         '<span>Confidence</span>'
         f'<strong>{html_lib.escape(confidence)}</strong>'
         '</div>'
         '</div>'
+
         '<div class="report-meta">'
         f'Team: {html_lib.escape(team)} | Property Type: {html_lib.escape(property_type)}'
         '</div>'
+
+        f'{sections_container_html}'
+
         '</div>'
-        f'{sections_html}'
         '</div>'
     )
 

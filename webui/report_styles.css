@@ -3,18 +3,21 @@
     margin-top: 1.2rem;
 }
 
-/* Glass report cards - keep background image visible */
-.report-main-card,
-.report-section-card {
+/* One unified glass report card */
+.report-main-card {
     background: rgba(255, 255, 255, 0.78);
     color: var(--text-color, #0f172a);
     border: 1px solid rgba(148, 163, 184, 0.38);
     border-radius: 18px;
-    padding: 24px;
-    margin-bottom: 18px;
+    padding: 28px;
+    margin-bottom: 24px;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.10);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+}
+
+.unified-report-card {
+    overflow: hidden;
 }
 
 .report-header-row {
@@ -94,11 +97,31 @@
     font-size: 0.9rem;
 }
 
-.report-section-card h3 {
+.report-divider {
+    height: 1px;
+    background: rgba(148, 163, 184, 0.35);
+    margin: 26px 0 4px 0;
+}
+
+.report-sections {
     margin-top: 0;
-    margin-bottom: 14px;
+}
+
+.report-inner-section {
+    padding: 22px 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.report-inner-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.report-inner-section h3 {
+    margin: 0 0 14px 0;
     color: var(--text-color, #0f172a);
-    font-size: 1.35rem;
+    font-size: 1.25rem;
+    font-weight: 700;
 }
 
 .report-section-content {
@@ -117,13 +140,16 @@
 }
 
 .report-section-content p {
-    margin: 0;
+    margin: 0 0 10px 0;
+}
+
+.report-section-content p:last-child {
+    margin-bottom: 0;
 }
 
 /* Dark mode support while keeping background image visible */
 @media (prefers-color-scheme: dark) {
-    .report-main-card,
-    .report-section-card {
+    .report-main-card {
         background: rgba(15, 23, 42, 0.72);
         color: #f8fafc;
         border: 1px solid rgba(148, 163, 184, 0.28);
@@ -131,7 +157,7 @@
     }
 
     .report-main-card h2,
-    .report-section-card h3,
+    .report-inner-section h3,
     .report-section-content,
     .report-kpi strong {
         color: #f8fafc;
@@ -152,6 +178,15 @@
         color: #bfdbfe;
         border: 1px solid rgba(147, 197, 253, 0.45);
     }
+
+    .report-divider,
+    .report-inner-section {
+        border-color: rgba(148, 163, 184, 0.25);
+    }
+
+    .report-divider {
+        background: rgba(148, 163, 184, 0.25);
+    }
 }
 
 @media (max-width: 900px) {
@@ -165,6 +200,10 @@
 }
 
 @media (max-width: 600px) {
+    .report-main-card {
+        padding: 22px;
+    }
+
     .report-kpi-grid {
         grid-template-columns: 1fr;
     }

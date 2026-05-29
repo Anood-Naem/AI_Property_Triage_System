@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 
-N8N_WEBHOOK_URL = "http://localhost:5678/webhook-test/ai-property-analysis"
+N8N_WEBHOOK_URL = "http://localhost:5678/webhook/ai-property-analysis"
 
 # Groq models
 GROQ_TEXT_MODEL = "llama-3.1-8b-instant"
