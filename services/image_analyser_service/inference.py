@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import torch
 from PIL import Image
 
-from image_sources import ImageSource
+from common.image_sources import ImageSource
 from model import ROOM_CLASSES, PropertyRoomModel
 
 logger = logging.getLogger(__name__)

@@ -6,13 +6,34 @@ Three-node LangGraph workflow: planner → tool execution → synthesiser.
 
 `POST /agent/run`
 
+### URLs only
+
 ```json
 {
-  "query": "What renovation work is needed to bring the property to condition score 5?",
+  "query": "Which rooms need attention?",
   "description": "3-room apartment in Haifa...",
   "image_urls": ["https://example.com/kitchen_good.jpg"]
 }
 ```
+
+### URLs + PC upload (base64)
+
+```json
+{
+  "query": "Which rooms need attention?",
+  "description": "3-room apartment in Haifa...",
+  "image_urls": ["https://example.com/kitchen_good.jpg"],
+  "images": [
+    {
+      "image_base64": "<base64>",
+      "mime_type": "image/jpeg",
+      "filename": "bathroom.jpg"
+    }
+  ]
+}
+```
+
+Uploads are forwarded to the image service (`/analyse/batch`). Max **20** images total (`image_urls` + `images`).
 
 ## Run
 
@@ -25,12 +46,5 @@ uvicorn app:app --host 0.0.0.0 --port 8004
 ```bash
 curl -X POST http://localhost:8004/agent/run \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "Which rooms need attention and how does this compare to similar listings?",
-    "description": "Beautiful 3-room apartment in Haifa with renovated kitchen. Price 1,850,000 ILS.",
-    "image_urls": [
-      "https://example.com/kitchen_good.jpg",
-      "https://example.com/bathroom_needs_renovation.jpg"
-    ]
-  }'
+  -d '{"query":"Which rooms need attention?","description":"Apartment in Haifa.","image_urls":["https://example.com/kitchen_good.jpg"]}'
 ```

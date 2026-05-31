@@ -9,6 +9,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from common.http_utils import post_json_with_retry
+from common.image_sources import ImageSource
 
 logger = logging.getLogger(__name__)
 
@@ -38,40 +39,49 @@ def call_rag(description: str) -> dict[str, Any]:
         }
 
 
-def call_image_analyser(image_url: str) -> dict[str, Any]:
-    """Analyse a single property image."""
+def call_image_analyser(source: ImageSource) -> dict[str, Any]:
+    """Analyse one image (URL or base64 upload)."""
+    label = source.display_label()
     try:
         return post_json_with_retry(
             f"{IMAGE_ANALYSER_URL.rstrip('/')}/analyse",
-            {"image_url": image_url},
+            source.to_analyse_payload(),
             timeout=HTTP_TIMEOUT,
             retries=HTTP_RETRIES,
         )
     except Exception as exc:
-        logger.warning("Image analyser unavailable for %s: %s", image_url, exc)
-        return _keyword_fallback(image_url)
+        logger.warning("Image analyser unavailable for %s: %s", label, exc)
+        return _keyword_fallback(label)
 
 
-def call_image_batch(image_urls: list[str]) -> list[dict[str, Any]]:
-    """Batch image analysis when service supports /analyse/batch."""
-    clean = [u.strip() for u in image_urls if u.strip()]
-    if not clean:
+def call_image_batch(
+    image_urls: list[str],
+    images: list[ImageSource],
+) -> list[dict[str, Any]]:
+    """Batch image analysis (mixed URLs and uploads)."""
+    clean_urls = [u.strip() for u in image_urls if u.strip()]
+    if not clean_urls and not images:
         return []
+    body: dict[str, Any] = {}
+    if clean_urls:
+        body["image_urls"] = clean_urls
+    if images:
+        body["images"] = [img.to_analyse_payload() for img in images]
     try:
         data = post_json_with_retry(
             f"{IMAGE_ANALYSER_URL.rstrip('/')}/analyse/batch",
-            {"image_urls": clean},
+            body,
             timeout=HTTP_TIMEOUT,
             retries=HTTP_RETRIES,
         )
         return data.get("image_results", [])
     except Exception as exc:
-        logger.warning("Batch image API unavailable, falling back per-URL: %s", exc)
-        return analyse_all_images(clean)
+        logger.warning("Batch image API unavailable: %s", exc)
+        return []
 
 
-def _keyword_fallback(image_url: str) -> dict[str, Any]:
-    url_lower = image_url.lower()
+def _keyword_fallback(label: str) -> dict[str, Any]:
+    url_lower = label.lower()
     room, cond = "other", 3
     if "kitchen" in url_lower:
         room, cond = "kitchen", 4
@@ -90,18 +100,35 @@ def _keyword_fallback(image_url: str) -> dict[str, Any]:
         "condition_score": cond,
         "confidence": 0.75,
         "status": "fallback",
-        "image_url": image_url,
+        "image_url": label if label.startswith("http") else None,
+        "filename": None if label.startswith("http") else label,
+        "source": "url" if label.startswith("http") else "base64",
     }
 
 
-def analyse_all_images(image_urls: list[str]) -> list[dict[str, Any]]:
-    if len(image_urls) > 1:
-        batch = call_image_batch(image_urls)
+def analyse_all_images(
+    image_urls: list[str],
+    images: list[ImageSource] | None = None,
+) -> list[dict[str, Any]]:
+    uploads = list(images or [])
+    clean_urls = [u.strip() for u in image_urls if u.strip()]
+    total = len(clean_urls) + len(uploads)
+    if total == 0:
+        return []
+
+    if total > 1 or (clean_urls and uploads):
+        batch = call_image_batch(clean_urls, uploads)
         if batch:
             return batch
-    results = []
-    for url in image_urls:
-        row = call_image_analyser(url.strip())
-        row.setdefault("image_url", url.strip())
+
+    results: list[dict[str, Any]] = []
+    for url in clean_urls:
+        src = ImageSource(image_url=url)
+        row = call_image_analyser(src)
+        row.update(src.to_result_meta())
+        results.append(row)
+    for src in uploads:
+        row = call_image_analyser(src)
+        row.update(src.to_result_meta())
         results.append(row)
     return results

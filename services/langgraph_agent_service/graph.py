@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from langgraph.graph import END, StateGraph
 
 from common.schemas import route_listing_team
+from common.image_sources import ImageSource
 from tools import analyse_all_images, call_rag
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ class AgentState(TypedDict, total=False):
     query: str
     description: str
     image_urls: list[str]
+    images: list[dict[str, Any]]
     plan: str
     tools_to_run: list[str]
     rag_result: dict[str, Any]
@@ -31,12 +33,14 @@ class AgentState(TypedDict, total=False):
 
 def planner_node(state: AgentState) -> AgentState:
     query = state.get("query", "")
-    images = state.get("image_urls", [])
+    urls = state.get("image_urls", [])
+    uploads = state.get("images", [])
+    n_images = len(urls) + len(uploads)
     steps = ["Planner: run RAG for similar-listing comparison."]
     tools = ["rag_tool"]
-    if images:
+    if n_images:
         tools.append("image_analyser_tool")
-        steps.append(f"Planner: analyse {len(images)} image URL(s) for room condition.")
+        steps.append(f"Planner: analyse {n_images} image(s) (URL and/or upload) for room condition.")
     return {
         **state,
         "plan": f"Execute tools {tools} for query: {query[:180]}",
@@ -48,6 +52,7 @@ def planner_node(state: AgentState) -> AgentState:
 def tool_execution_node(state: AgentState) -> AgentState:
     description = (state.get("description") or state.get("query") or "").strip()
     image_urls = state.get("image_urls", [])
+    upload_models = [ImageSource.model_validate(item) for item in state.get("images", [])]
     tools_used: list[str] = []
     reasoning = list(state.get("reasoning_steps", []))
 
@@ -59,8 +64,10 @@ def tool_execution_node(state: AgentState) -> AgentState:
         reasoning.append(f"Tool rag_tool: retrieved {n} similar listing(s).")
 
     image_results: list[dict[str, Any]] = []
-    if "image_analyser_tool" in state.get("tools_to_run", []) and image_urls:
-        image_results = analyse_all_images(image_urls)
+    if "image_analyser_tool" in state.get("tools_to_run", []) and (
+        image_urls or upload_models
+    ):
+        image_results = analyse_all_images(image_urls, upload_models)
         tools_used.append("image_analyser_tool")
         reasoning.append(
             f"Tool image_analyser_tool: scored {len(image_results)} image(s)."
@@ -177,12 +184,14 @@ def run_agent(
     query: str,
     description: str = "",
     image_urls: list[str] | None = None,
+    images: list[ImageSource] | None = None,
 ) -> dict[str, Any]:
     graph = get_graph()
     initial: AgentState = {
         "query": query,
         "description": description or query,
         "image_urls": image_urls or [],
+        "images": [img.model_dump() for img in (images or [])],
         "reasoning_steps": [],
         "tools_used": [],
     }
