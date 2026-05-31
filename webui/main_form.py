@@ -6,6 +6,7 @@ import requests
 import streamlit as st
 
 from config import N8N_WEBHOOK_URL
+from knowledgebase_service import store_report_in_knowledgebase
 
 
 def load_report_styles():
@@ -81,6 +82,10 @@ def render_main_form():
         )
 
         if result:
+            if result.get("status") == "success" and result.get("report"):
+                kb_status = store_report_in_knowledgebase(result)
+                result["_kb_status"] = kb_status
+
             st.session_state["last_listing_result"] = result
 
     if "last_listing_result" in st.session_state:
@@ -106,9 +111,12 @@ def build_uploaded_images_payload(uploaded_images):
             )
 
         except Exception as error:
-            st.warning(f"Could not read uploaded image {getattr(image, 'name', '')}: {error}")
+            st.warning(
+                f"Could not read uploaded image {getattr(image, 'name', '')}: {error}"
+            )
 
     return images_payload
+
 
 def parse_image_urls(image_urls_text):
     return [
@@ -153,6 +161,15 @@ def submit_listing(agent_name, description, image_urls_text, uploaded_images):
             }
 
         result["_http_status_code"] = response.status_code
+
+        # Source metadata for current report context and Pinecone Knowledge Base
+        result["_source_agent_name"] = agent_name
+        result["_source_description"] = description
+        result["_source_image_urls"] = image_urls
+        result["_source_uploaded_image_names"] = [
+            image["filename"] for image in uploaded_images_payload
+        ]
+
         return result
 
     except requests.exceptions.ConnectionError:
@@ -172,6 +189,7 @@ def submit_listing(agent_name, description, image_urls_text, uploaded_images):
             "status": "error",
             "message": f"Error: {error}",
         }
+
 
 def get_user_friendly_rejection_message(reason):
     reason_lower = (reason or "").lower()
@@ -232,6 +250,25 @@ def render_n8n_result(result):
 
         report = result.get("report")
 
+        # Safety check:
+        # If the report exists but was not stored yet, store it now.
+        if report and "_kb_status" not in result:
+            kb_status = store_report_in_knowledgebase(result)
+            result["_kb_status"] = kb_status
+            st.session_state["last_listing_result"] = result
+
+        kb_status = result.get("_kb_status")
+
+        if isinstance(kb_status, dict):
+            if kb_status.get("stored"):
+                st.success("Knowledge Base: report saved successfully.")
+            elif kb_status.get("message"):
+                st.warning(kb_status.get("message"))
+            else:
+                st.warning("Knowledge Base: no status message returned.")
+        else:
+            st.warning("Knowledge Base: no save status found.")
+
         if report:
             render_report_card(result)
         else:
@@ -266,6 +303,20 @@ def render_n8n_result(result):
         )
 
         report = result.get("report")
+
+        if report and "_kb_status" not in result:
+            kb_status = store_report_in_knowledgebase(result)
+            result["_kb_status"] = kb_status
+            st.session_state["last_listing_result"] = result
+
+        kb_status = result.get("_kb_status")
+
+        if isinstance(kb_status, dict):
+            if kb_status.get("stored"):
+                st.success("Knowledge Base: report saved successfully.")
+            elif kb_status.get("message"):
+                st.warning(kb_status.get("message"))
+
         if report:
             render_report_card(result)
 

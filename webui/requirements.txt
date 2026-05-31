@@ -3,3 +3,5 @@ requests
 python-dotenv
 groq
 openai
+pinecone
+sentence-transformers
