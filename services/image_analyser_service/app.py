@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from common.fastapi_app import add_standard_middleware
 from common.logging_config import configure_logging
-from image_sources import ImageSource
+from common.image_sources import ImageSource
 from inference import ImageInferenceEngine
 
 logger = configure_logging("image_analyser_service")

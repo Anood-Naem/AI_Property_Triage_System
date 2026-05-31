@@ -8,9 +8,10 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from common.fastapi_app import add_standard_middleware
+from common.image_sources import ImageSource
 from common.logging_config import configure_logging
 from graph import run_agent
 
@@ -19,7 +20,6 @@ logger = configure_logging("langgraph_agent_service")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Compile graph on first /agent/run — keeps /health fast for Docker healthchecks
     logger.info("LangGraph agent service ready")
     yield
 
@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LangGraph Property Agent",
     description="Multi-step property analysis agent",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 add_standard_middleware(app)
@@ -37,6 +37,13 @@ class AgentRunRequest(BaseModel):
     query: str = Field(..., min_length=5, max_length=5000)
     description: str = Field(default="", max_length=10000)
     image_urls: list[str] = Field(default_factory=list, max_length=20)
+    images: list[ImageSource] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def validate_image_count(self) -> AgentRunRequest:
+        if len(self.image_urls) + len(self.images) > 20:
+            raise ValueError("Maximum 20 images total (image_urls + images)")
+        return self
 
 
 class AgentRunResponse(BaseModel):
@@ -57,6 +64,7 @@ async def health() -> dict:
         "service": "langgraph_agent_service",
         "rag_url": os.getenv("RAG_SERVICE_URL", "http://localhost:8001"),
         "image_url": os.getenv("IMAGE_ANALYSER_URL", "http://localhost:8002"),
+        "image_input_modes": ["image_urls", "images (base64 + mime_type)"],
     }
 
 
@@ -67,8 +75,11 @@ async def agent_run(request: AgentRunRequest) -> AgentRunResponse:
             query=request.query.strip(),
             description=request.description.strip(),
             image_urls=[u.strip() for u in request.image_urls if u.strip()],
+            images=list(request.images),
         )
         return AgentRunResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Agent run failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
