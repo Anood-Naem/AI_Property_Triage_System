@@ -372,3 +372,34 @@ section[data-testid="stSidebar"] div[data-testid="stForm"] [data-testid="stFileU
     border-color: #1d4ed8 !important;
     color: #ffffff !important;
 }
+
+
+
+/* =========================================================
+   Hide Streamlit Deploy button / toolbar
+   To restore later: delete this block or comment it out.
+   ========================================================= */
+
+[data-testid="stDeployButton"],
+[data-testid="stAppDeployButton"],
+[data-testid="stHeaderActionElements"],
+[data-testid="stToolbar"],
+#MainMenu {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Extra fallback for Streamlit header buttons */
+header button[kind="header"],
+header button[title="Deploy"],
+header button[aria-label="Deploy"],
+header a[href*="streamlit.io"],
+header a[href*="share.streamlit.io"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Keep the header itself transparent/clean */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}

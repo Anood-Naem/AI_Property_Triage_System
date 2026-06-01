@@ -257,17 +257,17 @@ def render_n8n_result(result):
             result["_kb_status"] = kb_status
             st.session_state["last_listing_result"] = result
 
-        kb_status = result.get("_kb_status")
-
-        if isinstance(kb_status, dict):
-            if kb_status.get("stored"):
-                st.success("Knowledge Base: report saved successfully.")
-            elif kb_status.get("message"):
-                st.warning(kb_status.get("message"))
-            else:
-                st.warning("Knowledge Base: no status message returned.")
-        else:
-            st.warning("Knowledge Base: no save status found.")
+        # kb_status = result.get("_kb_status")
+        #
+        # if isinstance(kb_status, dict):
+        #     if kb_status.get("stored"):
+        #         st.success("Knowledge Base: report saved successfully.")
+        #     elif kb_status.get("message"):
+        #         st.warning(kb_status.get("message"))
+        #     else:
+        #         st.warning("Knowledge Base: no status message returned.")
+        # else:
+        #     st.warning("Knowledge Base: no save status found.")
 
         if report:
             render_report_card(result)
@@ -309,13 +309,13 @@ def render_n8n_result(result):
             result["_kb_status"] = kb_status
             st.session_state["last_listing_result"] = result
 
-        kb_status = result.get("_kb_status")
+       # kb_status = result.get("_kb_status")
 
-        if isinstance(kb_status, dict):
-            if kb_status.get("stored"):
-                st.success("Knowledge Base: report saved successfully.")
-            elif kb_status.get("message"):
-                st.warning(kb_status.get("message"))
+        # if isinstance(kb_status, dict):
+        #     if kb_status.get("stored"):
+        #         st.success("Knowledge Base: report saved successfully.")
+        #     elif kb_status.get("message"):
+        #         st.warning(kb_status.get("message"))
 
         if report:
             render_report_card(result)

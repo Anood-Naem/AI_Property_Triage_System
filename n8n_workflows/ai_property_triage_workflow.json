@@ -1,0 +1,557 @@
+{
+  "name": "ai_property_triage_workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-property-analysis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        -144
+      ],
+      "id": "ed2314fc-8140-4c8a-92bb-84ff781a74f3",
+      "name": "Webhook",
+      "webhookId": "4c689f83-6242-4ab0-952f-909ef0859c38"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8003/check/input",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  text: $json.body.description || \"\"\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        80,
+        -144
+      ],
+      "id": "39144790-8a48-4e1f-98b9-d123aaaa5b74",
+      "name": "Guardrails Input Check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22474d68-7ed3-4f4f-8616-77808ab2fe13",
+              "leftValue": "={{ $json.pass }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        -144
+      ],
+      "id": "7560c87c-bcdd-4bd6-90f3-0993059d598b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Guardrails Input Check').item.json.safe_text }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"property_type\": {\n      \"type\": \"string\",\n      \"description\": \"The property type mentioned in the text. Use lowercase values such as apartment, house, villa, studio, office, retail, industrial, warehouse, land, or commercial. If unclear, return unknown. Never return null.\"\n    },\n    \"location\": {\n      \"type\": \"string\",\n      \"description\": \"The city, neighborhood, street, or area mentioned in the text. If not mentioned, return —. Never return null.\"\n    },\n    \"price\": {\n      \"type\": \"string\",\n      \"description\": \"The property price exactly as written, including currency and payment period if present. If not mentioned, return —. Never return null.\"\n    },\n    \"number_of_rooms\": {\n      \"type\": \"string\",\n      \"description\": \"The number of rooms exactly as written, for example 3 rooms, 3-bedroom, 4.5 rooms, or two meeting rooms. For commercial properties with no room count mentioned, return —. Never return null.\"\n    },\n    \"key_features\": {\n      \"type\": \"array\",\n      \"description\": \"Important property features explicitly mentioned in the text, such as size, renovation status, balcony, view, parking, elevator, storage, basement, high foot traffic, lease terms, bathrooms, meeting rooms, or kitchenette. Return an empty array if none are mentioned.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"certifications\": {\n      \"type\": \"array\",\n      \"description\": \"Certifications explicitly mentioned in the text, such as energy rating, LEED, earthquake-resistant construction, or other formal certifications. Return an empty array if none are mentioned.\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    }\n  },\n  \"required\": [\n    \"property_type\",\n    \"location\",\n    \"price\",\n    \"number_of_rooms\",\n    \"key_features\",\n    \"certifications\"\n  ],\n  \"additionalProperties\": false\n}",
+        "options": {
+          "systemPromptTemplate": "You are an Information Extractor for a real estate property triage workflow.\n\nExtract only facts that are explicitly mentioned in the input text.\nDo not guess, infer, complete, or invent missing information.\n\nYou MUST return only a valid JSON object that matches the provided schema.\nDo NOT write explanations.\nDo NOT ask for clarification.\nDo NOT say that input text is missing.\nDo NOT wrap the JSON in markdown.\nDo NOT use ```json.\nDo NOT return null.\nDo NOT return undefined.\n\nMissing value rules:\n- For missing string fields, return \"—\".\n- Never return null for property_type, location, price, or number_of_rooms.\n- If property_type is unclear, return \"unknown\".\n- If location is missing, return \"—\".\n- If price is missing, return \"—\".\n- If number_of_rooms is missing, return \"—\".\n- If key_features are missing, return an empty array [].\n- If certifications are missing, return an empty array [].\n\nProperty type rules:\n- If the text mentions apartment, return \"apartment\".\n- If the text mentions studio, return \"studio\".\n- If the text mentions house, return \"house\".\n- If the text mentions villa, return \"villa\".\n- If the text mentions office or office space, return \"office\".\n- If the text mentions retail, retail unit, shop, store, cafe, pharmacy, or fashion store, return \"retail\".\n- If the text mentions industrial or warehouse, return \"industrial\".\n- If the text mentions commercial property, return \"commercial\".\n- If unclear, return \"unknown\".\n\nFeature extraction rules:\n- Include size or area if mentioned, such as \"110 sqm\" or \"120 sqm\".\n- Include renovation status if mentioned.\n- Include balcony, view, parking, elevator, storage, basement, bathrooms, kitchenette, meeting rooms, high foot traffic, and lease terms if mentioned.\n- Keep combined features together. For example, \"balcony with city view\" should remain one feature.\n- Use only information present in the input text.\n\nCommercial property rules:\n- For retail or office properties, do not invent residential rooms.\n- If meeting rooms are mentioned, number_of_rooms may be \"two meeting rooms\".\n- If no rooms or meeting rooms are mentioned, number_of_rooms must be \"—\".\n\nReturn JSON only."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        -160
+      ],
+      "id": "040e953c-abc0-410e-ba6b-8b6f04140784",
+      "name": "Information Extractor",
+      "retryOnFail": true,
+      "waitBetweenTries": 500
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        528,
+        16
+      ],
+      "id": "46cc50f3-37de-46fd-b476-39fa3e3fdb79",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "w8IZR0DO8Gxf2qLH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this property submission using only the LangGraph_Agent tool.\n\nOriginal description:\n{{ $('Webhook').first().json.body.description }}\n\nExtracted fields:\n{{ JSON.stringify($('Information Extractor').first().json.output) }}\n\nImage context:\nImage URL count: {{ $('Webhook').first().json.body.image_urls?.length || 0 }}\nUploaded image count: {{ $('Webhook').first().json.body.uploaded_images?.length || 0 }}\nImage URL exists: {{ ($('Webhook').first().json.body.image_urls?.length || 0) > 0 ? \"YES\" : \"NO\" }}\nUploaded image exists: {{ ($('Webhook').first().json.body.uploaded_images?.length || 0) > 0 ? \"YES\" : \"NO\" }}\n\nImage URLs:\n{{ JSON.stringify($('Webhook').first().json.body.image_urls || []) }}\n\nUploaded images:\n{{ JSON.stringify(($('Webhook').first().json.body.uploaded_images || []).map(img => ({\n  filename: img.filename,\n  mime_type: img.mime_type,\n  has_base64: !!img.base64\n}))) }}\n\nMandatory tool usage:\n- You MUST call only the LangGraph_Agent tool.\n- Do NOT call rag_service.\n- Do NOT call image_analyser.\n- LangGraph_Agent is responsible for calling RAG and Image Analyser internally.\n- Send the property description, image URLs, and uploaded images to LangGraph_Agent.\n- If both image URLs and uploaded images exist, send both to LangGraph_Agent.\n- Do not generate the final user-facing report.\n- Return only the enrichment JSON after receiving the LangGraph_Agent result.",
+        "options": {
+          "systemMessage": "You are a senior real estate property analyst for an AI Property Triage System.\n\nYour role is to enrich the extracted listing data using only the LangGraph_Agent tool.\n\nImportant tool rule:\nYou must call only LangGraph_Agent.\nDo not call rag_service directly.\nDo not call image_analyser directly.\nLangGraph_Agent is the orchestrator and it internally calls RAG and Image Analyser services.\n\nYou do NOT write the final user-facing report.\nYou do NOT decide routing.\nThe final report will be generated later by the Basic LLM Chain.\nRouting will be handled later by a separate Router node.\n\nTasks:\n1. Review the extracted property fields.\n2. Call LangGraph_Agent once with the property description, image URLs, and uploaded images.\n3. Use the LangGraph_Agent response as the enrichment source.\n4. Do not invent missing facts.\n5. If information is missing, write \"Not provided\".\n6. Return JSON only.\n\nImage handling:\n- If image_urls are available, pass them to LangGraph_Agent.\n- If uploaded_images are available, pass them to LangGraph_Agent.\n- If both image_urls and uploaded_images are available, pass both.\n- LangGraph_Agent is responsible for sending all image sources to Image Analyser internally.\n\nReturn this JSON structure:\n{\n  \"extracted_fields\": {\n    \"property_type\": \"\",\n    \"location\": \"\",\n    \"price\": \"\",\n    \"number_of_rooms\": \"\",\n    \"key_features\": [],\n    \"certifications\": []\n  },\n  \"rag_result\": {\n    \"similar_listings\": [],\n    \"insight\": \"\"\n  },\n  \"image_analysis\": [],\n  \"langgraph_result\": {\n    \"answer\": \"\",\n    \"tools_used\": [],\n    \"reasoning_steps\": [],\n    \"recommended_team\": \"\"\n  },\n  \"analysis_notes\": \"\",\n  \"missing_information\": []\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        864,
+        -160
+      ],
+      "id": "e9300a38-cb07-42f0-86a9-014ae9062ba6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        864,
+        80
+      ],
+      "id": "1ca45e69-400d-482d-b1bd-80843f63fe54",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "w8IZR0DO8Gxf2qLH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create the final user-facing property triage report.\n\nUse ONLY the provided data:\n1. Original listing description\n2. Extracted property fields\n3. AI Agent analysis, including RAG similar listings, image analysis, and LangGraph reasoning if available\n\nDo NOT invent missing facts.\nDo NOT create legal claims.\nDo NOT guarantee price, investment return, future value, ownership status, zoning status, or certifications.\nIf information is missing, write \"—\".\nReturn Markdown only.\n\nOriginal listing description:\n{{ $('Webhook').first().json.body.description }}\n\nExtracted property fields:\n{{ JSON.stringify($('Information Extractor').first().json.output) }}\n\nAI Agent analysis:\n{{ $('AI Agent').first().json.output }}\n\nReturn the report using EXACTLY this structure:\n\n✅ Report received.\n\n🏠 <Property Type> · <Team>\n\n**Location:** <location>  \n**Price:** <price>  \n**Rooms:** <rooms>  \n**Report confidence:** <confidence>%\n\n## Key features:\n- <feature>\n- <feature>\n- <feature>\n\n## Image analysis:\n- <room type>: <stars> (<condition score>/5), confidence <confidence>\n\n## Similar past listings:\n- <similar listing summary>\n- <similar listing summary>\n- <similar listing summary>\n\n## Market insight:\nWrite one concise paragraph comparing the submitted listing with the most relevant similar listing from the RAG results. Mention similarities and differences only if they appear in the provided data. Do not claim that the price is suspicious unless the difference is extreme and clearly supported by the retrieved listings.\n\n## Analyst notes:\nWrite one short professional paragraph for the real-estate agent. Start with the listing strengths, then mention optional missing details that could improve the listing. If the report passed output guardrails, do not say that human review is required.\n\n\nFormatting rules:\n- Do not write \"Property Triage Report\" as a title.\n- Do not use numbered sections.\n- Keep the report concise.\n- Use bullet points for lists.\n- Use \"—\" for missing price, rooms, or location.\n- Team must be \"Residential\" for apartment, house, or villa.\n- Team must be \"Commercial\" for office, retail, industrial, warehouse, or commercial property.\n- Report confidence rules:\n  - 95% if property type, location, price, rooms, key features, and image analysis are available.\n  - 90% if property type, location, price, and key features are available but image analysis is limited.\n  - 75% only if price, location, or property type is missing.\n  - 60% only if several core fields are missing.\n\nAdditional formatting rules:\n- Keep combined features together. For example, \"balcony with city view\" must remain one feature, not split into \"balcony\" and \"city view\".\n- Do not describe price differences as suspicious or problematic unless the difference is extreme and the report is being sent to human review.\n- If the listing passed output guardrails, do not say \"requires human review\".\n- For successful reports, use one of these recommendations:\n  \"Ready for preliminary publication.\"\n  \"Ready for publication after adding optional missing details.\"\n  \"Good candidate for publication, with minor details recommended.\"\n- Analyst notes should be practical and positive, not overly negative.\n- Market insight should compare the listing to similar listings in a neutral tone.\n\nFinal quality rules:\n- Always include size/area such as \"110 sqm\" or \"120 sqm\" in Key features if it appears in the input.\n- Do not drop factual features from the extracted fields.\n- Keep combined features together. For example, \"balcony with city view\" must remain one feature.\n- In Market insight, prioritize the most similar listing by location and property type.\n- If a similar listing is from a different city or different property type, mention it only as a weaker comparison.\n- Do not overemphasize weak comparisons.\n- Do not describe price differences as suspicious unless the difference is extreme and the report is being sent to human review.\n- For successful reports, do not say \"requires human review\".\n- For successful reports, end Analyst notes with one practical recommendation:\n  \"Ready for preliminary publication.\"\n  or\n  \"Ready for publication after adding optional missing details.\"",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a professional real-estate listing brief writer for an AI Property Triage System.\n\nYour task is to produce a clear, structured property triage report using only the provided data.\n\nRules:\n- Use only extracted facts, RAG similar-listing context, image analysis results, and AI Agent output.\n- Do not invent missing information.\n- Do not invent price, legal status, certifications, approvals, ownership status, investment return, or guarantees.\n- Do not mark the listing as human review unless the output guardrail failed or the input clearly contains a serious inconsistency.\n- If information is missing, write \"—\".\n- Return Markdown only."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1248,
+        -160
+      ],
+      "id": "c74a8ecd-990b-402d-ab52-863dc65face1",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        32
+      ],
+      "id": "8231dcce-9e2a-4768-9cca-fa78ff15932b",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "w8IZR0DO8Gxf2qLH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8003/check/output",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $('Basic LLM Chain').first().json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1616,
+        -160
+      ],
+      "id": "19387e03-3a67-4689-8fd4-554b2dcfef03",
+      "name": "Guardrails Output Check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "882e4c67-f08e-4b59-bdce-313235f5d021",
+              "leftValue": "={{ $json.pass }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1808,
+        -160
+      ],
+      "id": "c3abcefc-3f25-4c42-982c-4b44c50f4978",
+      "name": "IF Output Safe?"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use this tool for property enrichment. This tool internally calls the RAG service and Image Analyser service. The AI Agent must use this tool only and must not call RAG or Image Analyser directly.",
+        "method": "POST",
+        "url": "http://host.docker.internal:8004/agent/run",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"Analyze this property and provide renovation priorities, improvement suggestions, and missing information. Do not write the final report.\",\n  \"description\": {{ JSON.stringify($('Webhook').first().json.body.description || \"\") }},\n  \"image_urls\": {{ JSON.stringify($('Webhook').first().json.body.image_urls || []) }},\n  \"images\": {{ JSON.stringify(($('Webhook').first().json.body.uploaded_images || []).map(img => ({\n    image_base64: img.base64,\n    mime_type: img.mime_type,\n    filename: img.filename\n  }))) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        80
+      ],
+      "id": "5c3a1ab0-e6de-46b9-8bd5-9f23ec60781a",
+      "name": "LangGraph_Agent"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"status\": \"rejected\",\n  \"message\": \"Your submission was rejected\",\n  \"reason\": \"{{ $json.reason }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        320,
+        32
+      ],
+      "id": "65e26e8d-d48d-433d-81d6-07bdfaec2040",
+      "name": "Input Rejected Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"blocked\",\n  \"message\": \"The generated report requires human review.\",\n  \"reason\": \"{{ $('Guardrails Output Check').first().json.reason }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2048,
+        48
+      ],
+      "id": "872985b7-ba38-418e-b396-a705fe8a86a8",
+      "name": "Output Blocked Response"
+    },
+    {
+      "parameters": {
+        "content": "##  1. Input Reception & Validation\n\nThe workflow receives a property listing from the WebUI.\nThe input guardrails check whether the request is safe, valid, and related to real estate.\nInvalid submissions are rejected before continuing.",
+        "height": 656,
+        "width": 560
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -416
+      ],
+      "id": "48d5d354-22a2-43d6-8770-28badd75410b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Information Extraction\n\nThis step extracts structured property details from the free-text listing,\nsuch as property type, location, price, rooms, and key features.",
+        "height": 656,
+        "width": 304,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -416
+      ],
+      "id": "54494a4a-3589-4c3f-8f86-8e008ba05288",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 3. AI Agent Enrichment\n\nThe AI Agent enriches the extracted property data by using only the LangGraph Agent tool.\n\nLangGraph Agent internally calls:\n\n* RAG service for similar past listings.\n* Image Analyser for image URLs and uploaded images.\n\n\n",
+        "height": 656,
+        "width": 368,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -416
+      ],
+      "id": "510ea967-ca73-4f72-a855-a36ce8271b95",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Report Generation \nThe LLM chain generates the final property analysis report\nbased on the extracted and enriched listing information.",
+        "height": 656,
+        "width": 304,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        -416
+      ],
+      "id": "ad951193-b9eb-4c21-b408-08f2dc9bdd74",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## 5. Output Safety & Final Response\n\nThe generated report is checked before being returned to the WebUI.\n\nIf safe:\n- Final Report Response returns one unified JSON response.\n- The response includes status, team, property_type, and report.\n\nIf unsafe:\n- Output Blocked Response returns a blocked message.\n- The report is not shown to the user.",
+        "height": 656,
+        "width": 720,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        -416
+      ],
+      "id": "6a1b639f-6ac9-4cb1-9563-aa0c09b74787",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n(() => {\n  const info = $(\"Information Extractor\").first().json.output || {};\n  const propertyType = info.property_type || \"Not provided\";\n  const description = $(\"Webhook\").first().json.body?.description || \"\";\n\n  const combinedText = `${propertyType} ${description}`.toLowerCase();\n\n  const isCommercial =\n    combinedText.includes(\"commercial\") ||\n    combinedText.includes(\"office\") ||\n    combinedText.includes(\"retail\") ||\n    combinedText.includes(\"industrial\") ||\n    combinedText.includes(\"warehouse\") ||\n    combinedText.includes(\"shop\") ||\n    combinedText.includes(\"store\") ||\n    combinedText.includes(\"clinic\") ||\n    combinedText.includes(\"restaurant\") ||\n    combinedText.includes(\"workspace\");\n\n  return {\n    status: \"success\",\n    team: isCommercial ? \"commercial\" : \"residential\",\n    property_type: propertyType,\n    message: \"Property report generated successfully.\",\n    report:\n      $(\"Guardrails Output Check\").first().json.safe_text ||\n      $(\"Basic LLM Chain\").first().json.text ||\n      \"\"\n  };\n})()\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2048,
+        -176
+      ],
+      "id": "adf9df85-8203-4c38-a44d-90c5f148009a",
+      "name": "Final Report Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Guardrails Input Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardrails Input Check": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Input Rejected Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Guardrails Output Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardrails Output Check": {
+      "main": [
+        [
+          {
+            "node": "IF Output Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Output Safe?": {
+      "main": [
+        [
+          {
+            "node": "Final Report Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Output Blocked Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LangGraph_Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2c434b46-4f1d-4c21-8ba3-54afe94e7677",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "215a1585dfa840a26b2f68f48fdd1630e2439ef0814828e5d4ff2ce93cedc06c"
+  },
+  "id": "CiWRlkVqdRyFQcyk",
+  "tags": []
+}

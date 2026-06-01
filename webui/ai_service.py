@@ -228,6 +228,42 @@ def stream_groq_response(
         if token:
             yield token
 
+def render_assistant_loading(response_placeholder):
+    response_placeholder.markdown(
+        """
+        <style>
+        .thinking-dots span {
+            animation: blink 1.4s infinite both;
+            font-weight: 700;
+        }
+
+        .thinking-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .thinking-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+
+        .thinking-small {
+            opacity: 0.82;
+            font-size: 0.95rem;
+        }
+        </style>
+
+        <div class="assistant-bubble thinking-small">
+            ⏳ Thinking<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 def ask_assistant(user_text, uploaded_images):
     image_paths = save_images(uploaded_images)
@@ -245,6 +281,7 @@ def ask_assistant(user_text, uploaded_images):
 
     try:
         response_placeholder = st.empty()
+        render_assistant_loading(response_placeholder)
         full_response = ""
 
         last_report = st.session_state.get("last_listing_result")
@@ -267,21 +304,27 @@ def ask_assistant(user_text, uploaded_images):
         if route_decision["use_current_report"]:
             current_report_context = build_current_report_context()
 
-        if (
-            route_decision["use_knowledgebase"]
-            and route_decision["confidence"] >= 0.6
-        ):
-            rag_context = build_rag_context(
+        if route_decision["use_knowledgebase"]:
+            kb_query_parts = [
                 route_decision.get("knowledgebase_query") or user_text
+            ]
+
+            if current_report_context:
+                kb_query_parts.append(current_report_context)
+
+            rag_context = build_rag_context(
+                "\n\n".join(kb_query_parts)
             )
 
         # Optional: keep this only while testing.
         # After testing, you can delete this block.
-        st.info(
-            f"Routing to: {route.upper()} | "
-            f"Current report: {'ON' if current_report_context else 'OFF'} | "
-            f"Knowledge Base: {'ON' if rag_context else 'OFF'}"
-        )
+        # st.info(
+        #     f"Routing to: {route.upper()} | "
+        #     f"Current report: {'ON' if current_report_context else 'OFF'} | "
+        #     f"Knowledge Base: {'ON' if rag_context else 'OFF'}"
+        # )
+
+
 
         if route == "sonar":
             token_stream = stream_sonar_response(
@@ -298,12 +341,9 @@ def ask_assistant(user_text, uploaded_images):
 
         for token in token_stream:
             full_response += token
-            response_placeholder.markdown(
-                f'<div class="assistant-bubble">{full_response}</div>',
-                unsafe_allow_html=True,
-            )
 
         add_message(conversation_id, "assistant", full_response)
+        response_placeholder.empty()
         st.rerun()
 
     except Exception as error:

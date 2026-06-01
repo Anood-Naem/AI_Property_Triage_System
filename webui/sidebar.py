@@ -33,9 +33,12 @@ def render_sidebar():
 
         if st.button("Clear chat", use_container_width=True):
             delete_conversation(st.session_state.active_conversation_id)
-            set_active_to_latest_chat()
-            st.rerun()
 
+            st.session_state.active_conversation_id = None
+            st.session_state.open_chat_menu_id = None
+
+            cleanup_empty_conversations()
+            st.rerun()
         st.markdown('<div class="sidebar-label">Chats</div>', unsafe_allow_html=True)
         render_chat_history()
 

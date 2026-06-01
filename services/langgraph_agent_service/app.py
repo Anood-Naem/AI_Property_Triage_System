@@ -40,7 +40,7 @@ class AgentRunRequest(BaseModel):
     images: list[ImageSource] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
-    def validate_image_count(self) -> AgentRunRequest:
+    def validate_image_count(self) -> "AgentRunRequest":
         if len(self.image_urls) + len(self.images) > 20:
             raise ValueError("Maximum 20 images total (image_urls + images)")
         return self

@@ -1,5 +1,7 @@
 import base64
 import os
+import html
+import re
 from pathlib import Path
 
 from openai import OpenAI
@@ -25,6 +27,12 @@ Use current web information when the user asks about:
 - updated regulations
 - fresh statistics
 - anything likely to change over time
+
+When using current market information:
+- Include citations when available.
+- Do not claim a property is aligned with today's market unless current web evidence supports it.
+- If current web evidence is limited, clearly say the market comparison is partial.
+- Combine current web data with the saved report context, but keep the conclusion cautious and practical.
 
 You may also receive property images.
 When an image is provided, use it only as visual context for the real-estate question.
@@ -166,6 +174,75 @@ def build_sonar_messages(
     return sonar_messages
 
 
+def get_response_citations(response):
+    citations = getattr(response, "citations", None)
+
+    if citations:
+        return citations
+
+    model_extra = getattr(response, "model_extra", None)
+
+    if isinstance(model_extra, dict):
+        return model_extra.get("citations") or []
+
+    return []
+
+
+def citation_url(citation):
+    if isinstance(citation, str):
+        return citation
+
+    if isinstance(citation, dict):
+        return citation.get("url") or citation.get("link") or ""
+
+    return ""
+
+
+def replace_inline_citations_with_links(text, citations):
+    urls = [citation_url(citation) for citation in citations]
+
+    def repl(match):
+        number = int(match.group(1))
+        index = number - 1
+
+        if index < 0 or index >= len(urls):
+            return match.group(0)
+
+        url = urls[index]
+
+        if not url:
+            return match.group(0)
+
+        safe_url = html.escape(url, quote=True)
+        return f'<a href="{safe_url}" target="_blank">[{number}]</a>'
+
+    return re.sub(r"\[(\d+)\]", repl, text)
+
+
+def build_sources_html(citations):
+    if not citations:
+        return ""
+
+    lines = []
+
+    for index, citation in enumerate(citations[:4], start=1):
+        url = citation_url(citation)
+
+        if not url:
+            continue
+
+        safe_url = html.escape(url, quote=True)
+        lines.append(
+            f'{index}. <a href="{safe_url}" target="_blank">Source {index}</a>'
+        )
+
+    if not lines:
+        return ""
+
+    return "<br><br><strong>Sources</strong><br>" + "<br>".join(lines)
+
+
+
 def stream_sonar_response(
     conversation_id,
     current_report_context="",
@@ -174,7 +251,7 @@ def stream_sonar_response(
     client = get_sonar_client()
     messages = get_messages(conversation_id)
 
-    stream = client.chat.completions.create(
+    response = client.chat.completions.create(
         model=SONAR_MODEL,
         messages=build_sonar_messages(
             messages=messages,
@@ -182,11 +259,13 @@ def stream_sonar_response(
             rag_context=rag_context,
         ),
         temperature=0.2,
-        stream=True,
+        stream=False,
     )
 
-    for chunk in stream:
-        token = getattr(chunk.choices[0].delta, "content", None)
+    content = response.choices[0].message.content or ""
+    citations = get_response_citations(response)
 
-        if token:
-            yield token
+    content = replace_inline_citations_with_links(content, citations)
+    sources_html = build_sources_html(citations)
+
+    yield content + sources_html
