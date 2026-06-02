@@ -5,3 +5,4 @@ groq
 openai
 pinecone
 sentence-transformers
+streamlit-theme
