@@ -1,4 +1,4 @@
-# AI Property Triage System
+﻿# AI Property Triage System
 
 AI Property Triage System receives a property listing, validates it, enriches it with RAG + image analysis, and returns a structured report for triage and routing.
 
@@ -68,3 +68,19 @@ streamlit run app.py
 - `.pt`, `.pth`, `.gguf`, dataset archives are intentionally excluded from git.
 - n8n workflow includes node IDs/credential references from authoring environment; credentials must be reselected after import.
 - For full layer details, see `services/README.md` and `docs/IMAGE_MODEL_TRAINING.md`.
+
+## Run from GitHub (no manual unzip)
+
+```powershell
+cd C:\Users\Musta\AI_Property_Triage_System
+powershell -ExecutionPolicy Bypass -File .\run_from_github.ps1
+```
+
+This script automatically:
+- creates `.env` files from examples
+- downloads + extracts `image-model-v1` checkpoint
+- starts backend services
+- populates RAG data
+- starts n8n container (if enabled)
+- installs WebUI dependencies and starts Streamlit
+
